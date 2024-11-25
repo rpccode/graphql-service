@@ -1,22 +1,37 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Inject } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Client, ClientProxy, EventPattern, Transport } from '@nestjs/microservices';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
+@ApiTags('rabbitmq') // Agrupar los eventos de RabbitMQ
 @Injectable()
 export class RabbitMQService {
+  @Client({
+    transport: Transport.RMQ,
+    options: {
+      urls: ['amqp://localhost:56680'],  // URL de RabbitMQ
+      queue: 'product_queue',            // Nombre de la cola
+      queueOptions: { durable: true },
+    },
+  })
+  private client: ClientProxy;
+
   private readonly logger = new Logger(RabbitMQService.name);
 
-  constructor(
-    @Inject('RABBITMQ_SERVICE') private readonly client: ClientProxy, // Usa el nombre registrado
-  ) {}
-
-  sendMessage(pattern: string, data: any) {
-    this.logger.log(`Enviando mensaje con patrón "${pattern}"`, data);
-    return this.client.emit(pattern, data); // Usa emit para eventos
+  @ApiOperation({ summary: 'Maneja la creación de un producto' })
+  @EventPattern('product_created')
+  handleProductCreated(data: any) {
+    this.logger.log('Producto creado:', data);
+    // Aquí puedes agregar la lógica que desees, por ejemplo, guardar en la base de datos.
   }
 
-  sendRPCMessage(pattern: string, data: any) {
-    this.logger.log(`Enviando RPC mensaje con patrón "${pattern}"`, data);
-    return this.client.send(pattern, data); // Usa send para RPC
+  @ApiOperation({ summary: 'Maneja la actualización de un producto' })
+  @EventPattern('product_updated')
+  handleProductUpdated(data: any) {
+    this.logger.log('Producto actualizado:', data);
+    // Aquí puedes agregar la lógica que desees, por ejemplo, actualizar un producto en la base de datos.
+  }
+
+  sendMessage(pattern: string, data: any) {
+    return this.client.send(pattern, data);
   }
 }
