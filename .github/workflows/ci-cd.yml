@@ -1,0 +1,82 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main  # Solo ejecutará en push a la rama main
+      - develop  # También en la rama develop para pruebas
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/buildx
+          key: ${{ runner.os }}-docker-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-docker-
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'  # Cambia la versión de Node.js si es necesario
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run unit and integration tests
+        run: npm run test  # Ejecuta las pruebas de tu aplicación
+
+  build_docker_image:
+    needs: build_and_test  # Espera a que las pruebas pasen
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}  # Define el secreto en GitHub
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/my-app:${{ github.sha }} .
+
+      - name: Push Docker image to Docker Hub
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/my-app:${{ github.sha }}
+
+  deploy_to_k8s:
+    needs: build_docker_image  # Espera a que la imagen se construya
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v2
+        with:
+          version: 'v1.22.0'  # Versión de kubectl
+
+      - name: Set up K8s context
+        run: kubectl config set-cluster my-cluster --server=${{ secrets.K8S_SERVER }} --certificate-authority=${{ secrets.K8S_CA }} && \
+             kubectl config set-credentials my-user --token=${{ secrets.K8S_TOKEN }} && \
+             kubectl config set-context my-context --cluster=my-cluster --user=my-user && \
+             kubectl config use-context my-context
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f k8s/deployment.yml  # Asegúrate de tener tus archivos YAML de Kubernetes en la carpeta k8s/
+          kubectl rollout status deployment/my-app  # Verifica el estado del despliegue

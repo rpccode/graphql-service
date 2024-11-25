@@ -1,0 +1,35 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+"""Producto disponible en el sistema"""
+type Product {
+  id: Float!
+  nombre: String!
+  descripcion: String!
+  fechaCreacion: DateTime!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Query {
+  """Obtiene todos los productos"""
+  products: [Product!]!
+
+  """Obtiene un producto por ID"""
+  product(id: Float!): Product
+}
+
+type Mutation {
+  """Crea un nuevo producto"""
+  createProduct(nombre: String!, descripcion: String!): Product!
+
+  """Actualiza un producto"""
+  updateProduct(id: Float!, nombre: String, descripcion: String): Product!
+
+  """Elimina un producto por ID"""
+  deleteProduct(id: Float!): Boolean!
+}

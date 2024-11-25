@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cleanup-task
+spec:
+  schedule: "0 0 * * *" # A la medianoche todos los días
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: app
+              image: your-container-image:latest
+              command: ["npm", "run", "start"]
+              env:
+                - name: NODE_ENV
+                  value: production
+                - name: DATABASE_URL
+                  value: "postgres://postgres:0923@localhost:5432/teslodb"
+          restartPolicy: OnFailure
+
